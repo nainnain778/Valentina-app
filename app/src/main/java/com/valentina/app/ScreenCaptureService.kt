@@ -37,7 +37,7 @@ class ScreenCaptureService : Service() {
             while (running) {
                 Thread.sleep(2500)
                 val img = reader.acquireLatestImage() ?: continue
-                val plane = img.planes[0]
+                val plane = img.planes[0][0]
                 val bmp = Bitmap.createBitmap(plane.rowStride / plane.pixelStride, 1280, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 img.close()
