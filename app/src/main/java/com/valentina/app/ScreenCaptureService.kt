@@ -6,9 +6,12 @@ import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.media.ImageReader
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Base64
 import okhttp3.*
 import java.io.ByteArrayOutputStream
@@ -29,6 +32,7 @@ class ScreenCaptureService : Service() {
         val data = intent.getParcelableExtra<Intent>("data") ?: return START_NOT_STICKY
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val projection = mpm.getMediaProjection(code, data)
+        projection.registerCallback(object : MediaProjection.Callback() {}, Handler(Looper.getMainLooper()))
         val reader = ImageReader.newInstance(720, 1280, PixelFormat.RGBA_8888, 2)
         projection.createVirtualDisplay("ValentinaScreen", 720, 1280, 320, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
         val client = OkHttpClient()
@@ -37,7 +41,7 @@ class ScreenCaptureService : Service() {
             while (running) {
                 Thread.sleep(2500)
                 val img = reader.acquireLatestImage() ?: continue
-                val plane = img.planes[0][0][0]
+                val plane = img.planes.first()
                 val bmp = Bitmap.createBitmap(plane.rowStride / plane.pixelStride, 1280, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 img.close()
