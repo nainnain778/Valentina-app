@@ -13,11 +13,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Base64
-import okhttp3.*
 import java.io.ByteArrayOutputStream
 import kotlin.concurrent.thread
 
 class ScreenCaptureService : Service() {
+    companion object {
+        @Volatile var latestFrameB64: String? = null
+    }
     private var running = true
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -35,23 +37,20 @@ class ScreenCaptureService : Service() {
         projection.registerCallback(object : MediaProjection.Callback() {}, Handler(Looper.getMainLooper()))
         val reader = ImageReader.newInstance(720, 1280, PixelFormat.RGBA_8888, 2)
         projection.createVirtualDisplay("ValentinaScreen", 720, 1280, 320, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
-        val client = OkHttpClient()
-        val ws = client.newWebSocket(Request.Builder().url("ws://localhost:12393/client-ws").build(), object : WebSocketListener() {})
         thread {
             while (running) {
-                Thread.sleep(2500)
+                Thread.sleep(1500)
                 val img = reader.acquireLatestImage() ?: continue
                 val plane = img.planes.first()
                 val bmp = Bitmap.createBitmap(plane.rowStride / plane.pixelStride, 1280, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 img.close()
                 val out = ByteArrayOutputStream()
-                bmp.compress(Bitmap.CompressFormat.JPEG, 55, out)
-                val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-                ws.send("""{"type":"mic-audio-data","images":["data:image/jpeg;base64,$b64"]}""")
+                bmp.compress(Bitmap.CompressFormat.JPEG, 60, out)
+                latestFrameB64 = "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
             }
         }
         return START_STICKY
     }
-    override fun onDestroy() { running = false; super.onDestroy() }
+    override fun onDestroy() { running = false; latestFrameB64 = null; super.onDestroy() }
 }
