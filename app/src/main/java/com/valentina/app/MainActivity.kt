@@ -20,11 +20,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private val REQ_MEDIA = 1001
 
-    inner class ScreenBridge {
-        @JavascriptInterface
-        fun getFrame(): String = ScreenCaptureService.latestFrameB64 ?: ""
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,38 +33,7 @@ class MainActivity : AppCompatActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
-            addJavascriptInterface(ScreenBridge(), "AndroidScreen")
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    val js = """
-                        (function(){
-                            if(window._hookedWS) return;
-                            window._hookedWS = true;
-                            const OrigWS = window.WebSocket;
-                            window.WebSocket = function(u, p) {
-                                const ws = p ? new OrigWS(u, p) : new OrigWS(u);
-                                const origSend = ws.send.bind(ws);
-                                ws.send = function(data) {
-                                    try {
-                                        if (typeof data === 'string' && window.AndroidScreen) {
-                                            const frame = window.AndroidScreen.getFrame();
-                                            if (frame && (data.includes('"text-input"') || data.includes('"mic-audio-end"'))) {
-                                                const obj = JSON.parse(data);
-                                                obj.images = [frame];
-                                                data = JSON.stringify(obj);
-                                            }
-                                        }
-                                    } catch(e) {}
-                                    return origSend(data);
-                                };
-                                return ws;
-                            };
-                        })();
-                    """.trimIndent()
-                    view?.evaluateJavascript(js, null)
-                }
-            }
+            webViewClient = WebViewClient()
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) { request.grant(request.resources) }
             }
