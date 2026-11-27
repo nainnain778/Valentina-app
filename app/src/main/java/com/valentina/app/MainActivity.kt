@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) { request.grant(request.resources) }
             }
-            loadUrl("http://127.0.0.1:12393")
+            loadUrl("http://localhost:12393")
         }
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val btnReload = Button(this).apply { text = "🔄"; alpha = 0.75f; setOnClickListener { webView.reload() } }
